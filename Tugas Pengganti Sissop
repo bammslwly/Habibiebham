@@ -1,0 +1,192 @@
+#!/bin/bash
+
+# ===================================================================================
+#   SKRIP INFORMASI SISTEM - Dibuat untuk Habibie Ebham
+#   Versi 1.0
+#
+#   Skrip ini menyediakan menu interaktif untuk menampilkan berbagai
+#   informasi sistem pada lingkungan Linux (diuji di Ubuntu).
+# ===================================================================================
+
+# --- Definisi Warna untuk Tampilan ---
+MERAH='\033[0;31m'
+HIJAU='\033[0;32m'
+KUNING='\033[1;33m'
+BIRU='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+PUTIH='\033[1;37m'
+NC='\033[0m' # No Color - Kembali ke warna default
+
+# --- Fungsi untuk menampilkan Header ---
+# Fungsi ini akan dipanggil di setiap menu agar tampilan konsisten.
+tampilkan_header() {
+    clear
+    echo -e "${MAGENTA}"
+    echo "      .----------------.      "
+    echo "      |                |      "
+    echo "      |                |      "
+    echo "      |   ${PUTIH}SYS-INFO${MAGENTA}     |      "
+    echo "      |                |      "
+    echo "      |________________|      "
+    echo "     /__________________\\    "
+    echo "    |____________________|    "
+    echo -e "${NC}"
+    echo -e "   ${CYAN}SISTEM MONITORING BASH${NC}"
+    echo -e "         ${PUTIH}Habibie Ebham${NC}"
+    echo "----------------------------------------"
+    echo -e " Host : ${KUNING}$(hostname)${NC}"
+    echo -e " User : ${KUNING}$(whoami)${NC}"
+    echo "========================================"
+    echo ""
+}
+
+# --- Fungsi untuk jeda ---
+# Meminta pengguna menekan Enter untuk melanjutkan.
+jeda_kembali() {
+    echo ""
+    read -p "Tekan [Enter] untuk kembali ke menu utama..."
+}
+
+# --- MENU 1: Cek Waktu & Tanggal Sistem ---
+cek_waktu() {
+    tampilkan_header
+    echo -e "${HIJAU}📅  Waktu & Tanggal Sistem Saat Ini${NC}"
+    echo "----------------------------------------"
+    echo -e "Hari         : ${PUTIH}$(date +"%A")${NC}"
+    echo -e "Tanggal      : ${PUTIH}$(date +"%d %B %Y")${NC}"
+    echo -e "Waktu        : ${PUTIH}$(date +"%T")${NC}"
+    echo -e "Zona Waktu   : ${PUTIH}$(date +"%Z (%z)")${NC}"
+    jeda_kembali
+}
+
+# --- MENU 2: Lihat Isi Direktori Saat Ini ---
+lihat_direktori() {
+    tampilkan_header
+    echo -e "${HIJAU}📁  Isi Direktori Aktif: $(pwd)${NC}"
+    echo "---------------------------------------------------"
+    ls -alh --color=auto
+    jeda_kembali
+}
+
+# --- MENU 3: Analisa Jaringan & Koneksi ---
+analisa_jaringan() {
+    tampilkan_header
+    echo -e "${HIJAU}🌐  Analisa Jaringan & Koneksi${NC}"
+    echo "----------------------------------------"
+    echo -e "${CYAN}Informasi Jaringan Lokal:${NC}"
+    echo -e "   IP Lokal    : ${PUTIH}$(hostname -I | awk '{print $1}')${NC}"
+    echo -e "   Gateway     : ${PUTIH}$(ip route | grep default | awk '{print $3}')${NC}"
+    echo ""
+    echo -e "${CYAN}Informasi Jaringan Publik (via ipinfo.io):${NC}"
+    # Cek apakah curl terinstall
+    if ! command -v curl &> /dev/null; then
+        echo -e "   ${MERAH}Perintah 'curl' tidak ditemukan. Harap install curl untuk fitur ini.${NC}"
+    else
+        echo -e "   IP Publik   : ${PUTIH}$(curl -s ipinfo.io/ip)${NC}"
+        echo -e "   Lokasi      : ${PUTIH}$(curl -s ipinfo.io/city), $(curl -s ipinfo.io/region)${NC}"
+        echo -e "   Provider    : ${PUTIH}$(curl -s ipinfo.io/org)${NC}"
+    fi
+    jeda_kembali
+}
+
+# --- MENU 4: Spesifikasi Sistem & Perangkat ---
+info_sistem() {
+    tampilkan_header
+    echo -e "${HIJAU}💻  Spesifikasi Sistem & Perangkat${NC}"
+    echo "----------------------------------------"
+    echo -e "${CYAN}▪️ Sistem Operasi:${NC}"
+    if command -v lsb_release &> /dev/null; then
+        lsb_release -d | awk -F':\t' '{print "   Distro  : " "\033[1;37m" $2 "\033[0m"}'
+        lsb_release -r | awk -F':\t' '{print "   Rilis   : " "\033[1;37m" $2 "\033[0m"}'
+    else
+        echo -e "   Info    : ${PUTIH}$(cat /etc/os-release | grep PRETTY_NAME | cut -d'=' -f2 | tr -d '\"')${NC}"
+    fi
+    echo -e "   Kernel  : ${PUTIH}$(uname -r)${NC}"
+    echo ""
+    echo -e "${CYAN}▪️ Memori (RAM):${NC}"
+    free -h | sed 's/total\s*used\s*free\s*shared\s*buff\/cache\s*available/Total\t Digunakan\t Bebas\t Bersama\t Buff\/Cache\t Tersedia/'
+    echo ""
+    echo -e "${CYAN}▪️ Penyimpanan (Disk):${NC}"
+    df -hT --exclude-type=squashfs --exclude-type=tmpfs
+    jeda_kembali
+}
+
+# --- MENU 5: Estimasi Tanggal Instalasi OS ---
+tanggal_install() {
+    tampilkan_header
+    echo -e "${HIJAU}⏳  Estimasi Tanggal Instalasi OS${NC}"
+    echo "----------------------------------------"
+    echo -e "${KUNING}Info: Fitur ini memerlukan akses root (sudo) untuk membaca metadata filesystem.${NC}"
+    echo ""
+    
+    # Deteksi partisi root secara dinamis
+    ROOT_PART=$(df / | awk 'NR==2 {print $1}')
+    
+    echo -e "Mencoba membaca data dari partisi root (${ROOT_PART})..."
+    
+    # Jalankan perintah dengan sudo
+    INSTALL_DATE=$(sudo tune2fs -l ${ROOT_PART} 2>/dev/null | grep "Filesystem created:")
+    
+    if [ -n "$INSTALL_DATE" ]; then
+        echo -e "Waktu Pembuatan Filesystem :" ${PUTIH}$(echo $INSTALL_DATE | cut -d':' -f2- | sed 's/^ *//g')${NC}
+    else
+        echo -e "${MERAH}Gagal mendapatkan data. Pastikan Anda memasukkan password sudo dengan benar atau skrip dijalankan dengan sudo.${NC}"
+    fi
+    jeda_kembali
+}
+
+# --- MENU 6: Detail Akun Pengguna ---
+info_akun() {
+    tampilkan_header
+    echo -e "${HIJAU}👤  Detail Akun Pengguna${NC}"
+    echo "----------------------------------------"
+    echo -e "Username         : ${PUTIH}$(id -un)${NC}"
+    echo -e "User ID (UID)    : ${PUTIH}$(id -u)${NC}"
+    echo -e "Group Utama      : ${PUTIH}$(id -gn)${NC}"
+    echo -e "Group ID (GID)   : ${PUTIH}$(id -g)${NC}"
+    echo -e "Shell            : ${PUTIH}${SHELL}${NC}"
+    echo -e "Direktori Home   : ${PUTIH}${HOME}${NC}"
+    jeda_kembali
+}
+
+# --- Fungsi untuk menampilkan menu utama ---
+tampilkan_menu_utama() {
+    tampilkan_header
+    echo -e "${KUNING}Pilih Opsi Menu:${NC}"
+    echo -e "┌───────────────────────────────────────────────┐"
+    echo -e "│ ${PUTIH}1. Cek Waktu & Tanggal Sistem${NC}                 │"
+    echo -e "│ ${PUTIH}2. Lihat Isi Direktori Saat Ini${NC}              │"
+    echo -e "│ ${PUTIH}3. Analisa Jaringan & Koneksi${NC}                │"
+    echo -e "│ ${PUTIH}4. Spesifikasi Sistem & Perangkat${NC}            │"
+    echo -e "│ ${PUTIH}5. Estimasi Tanggal Instalasi OS${NC}             │"
+    echo -e "│ ${PUTIH}6. Detail Akun Pengguna${NC}                      │"
+    echo -e "├───────────────────────────────────────────────┤"
+    echo -e "│ ${MERAH}0. Keluar dari Aplikasi${NC}                      │"
+    echo -e "└───────────────────────────────────────────────┘"
+    echo ""
+}
+
+# --- Loop Utama Program ---
+while true; do
+    tampilkan_menu_utama
+    read -p "Masukkan pilihan Anda [0-6]: " pilihan
+
+    case $pilihan in
+        1) cek_waktu ;;
+        2) lihat_direktori ;;
+        3) analisa_jaringan ;;
+        4) info_sistem ;;
+        5) tanggal_install ;;
+        6) info_akun ;;
+        0)
+            clear
+            echo -e "${HIJAU}Terima kasih telah menggunakan skrip ini. Sampai jumpa!${NC}"
+            break
+            ;;
+        *)
+            echo -e "${MERAH}Pilihan tidak valid! Silakan coba lagi.${NC}"
+            sleep 2
+            ;;
+    esac
+done
